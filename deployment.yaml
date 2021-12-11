@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp:
+  labels:
+    app: owasp-juice-shop
+  name: owasp-juice-shop-gke-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: owasp-juice-shop
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp:
+      labels:
+        app: owasp-juice-shop
+    spec:
+      containers:
+      - image: gcr.io/PROJECT_ID/IMAGE:TAG
+        name: owasp-juice-shop-container
