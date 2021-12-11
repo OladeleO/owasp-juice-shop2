@@ -146,6 +146,7 @@ jobs:
              path: ${{github.workspace}}/reports
 
     setup-build-publish-deploy:
+      needs: [terraform]
       name: Setup, Build, Publish, and Deploy
       runs-on: ubuntu-latest
       environment: production
