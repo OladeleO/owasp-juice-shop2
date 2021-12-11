@@ -1,0 +1,135 @@
+
+
+name: 'DevSecOps Pipeline'
+
+on:
+  push:
+    branches:
+    - master
+    
+# Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  pull_request:
+
+
+#webapp: 1.0.0
+#apps:
+#  - id: juice-shop
+#    name: OWASP Juice Shop
+#    description: Probably the most modern and sophisticated insecure web application
+#    control:
+#      type: docker
+#      image: bkimminich/juice-shop
+#      port: 3000
+ 
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}    # TODO: update to cluster name
+  GKE_ZONE: europe-west1-b   # TODO: update to cluster zone
+  DEPLOYMENT_NAME: gke-deployment # TODO: update to deployment name
+  IMAGE: owasp-juice-shop-img
+
+
+jobs:        
+   
+  sast-docker-check:
+        runs-on: ubuntu-latest
+        name: sast_dockercheck
+        steps:
+        # Setup gcloud CLI
+        - name: Setup gcloud CLI
+          uses: google-github-actions/setup-gcloud@94337306dda8180d967a56932ceb4ddcf01edae7
+          with:
+            service_account_key: ${{ secrets.GCP_SA_KEY }}
+            project_id: ${{ secrets.GCP_PROJECT_ID }} 
+        - run: |-
+            gcloud --quiet beta container images describe gcr.io/$PROJECT_ID/$IMAGE@sha256:bd9ec10c50452fad3845cd69dc96bf44094442059a252c49c84e9a3fc5a939be --show-package-vulnerability > scanreport.txt
+        - uses: actions/upload-artifact@v2
+          with:
+            path: sast_report.txt
+   
+   sensitive-info-check:
+    runs-on: ubuntu-latest
+    name: sensitive-info-check
+    steps:  
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Check password
+      uses: AlicanAkkus/pinder-action@0.1
+      
+    
+   dependency-check:
+    runs-on: ubuntu-latest
+    name: dependency-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Depcheck
+        uses: dependency-check/Dependency-Check_Action@main
+        id: Depcheck
+        with:
+          project: 'owasp-juice-shop'
+          path: '.'
+          format: 'HTML'    
+      - name: Upload Test results
+        uses: actions/upload-artifact@master
+        with:
+           name: dependency-check-report
+           path: ${{github.workspace}}/reports
+
+   setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Setup gcloud CLI
+    - uses: google-github-actions/setup-gcloud@v0.2.0
+      with:
+           service_account_key: ${{ secrets.GCP_SA_KEY }}
+           project_id: ${{ secrets.GCP_PROJECT_ID }} 
+
+    # Configure Docker to use the gcloud command-line tool as a credential
+    # helper for authentication
+    - run: |-
+        gcloud --quiet auth configure-docker
+        
+    # Get the GKE credentials so we can deploy to the cluster
+    - uses: google-github-actions/get-gke-credentials@v0.2.1
+      with:
+        cluster_name: ${{ secrets.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+        credentials: ${{ secrets.GCP_SA_KEY }}
+
+    # Build the Docker image
+    - name: Build
+      run: |-
+        docker build \
+          --tag "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA" \
+          --build-arg GITHUB_SHA="$GITHUB_SHA" \
+          --build-arg GITHUB_REF="$GITHUB_REF" \
+          .
+    # Push the Docker image to Google Container Registry
+    - name: Publish
+      run: |-
+        docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+        
+        
+    
+    # Set up kustomize
+    - name: Set up Kustomize
+      run: |-
+        curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+        chmod u+x ./kustomize
+    # Deploy the Docker image to the GKE cluster
+    - name: Deploy
+      run: |-
+        ./kustomize edit set image gcr.io/PROJECT_ID/IMAGE:TAG=gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
+        ./kustomize build . | kubectl apply -f -
+        kubectl rollout status deployment/$DEPLOYMENT_NAME
+        kubectl get services -o wide
+      
+ 
