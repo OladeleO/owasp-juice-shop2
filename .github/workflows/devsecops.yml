@@ -201,4 +201,15 @@ jobs:
           kubectl rollout status deployment/$DEPLOYMENT_NAME
           kubectl get services -o wide
       
- 
+    
+    zap_scan:
+      needs: [setup-build-publish-deploy]
+      runs-on: ubuntu-latest
+      name: Scan the web application
+      steps:
+      - name: ZAP Scan
+        uses: zaproxy/action-full-scan@v0.3.0
+        with:
+          target: kubectl get service/owasp-juice-shop-service -o jsonpath='{.spec.clusterIP}' + ':3000'
+
+
