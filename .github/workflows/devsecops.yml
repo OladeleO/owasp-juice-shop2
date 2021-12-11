@@ -30,6 +30,7 @@ env:
 
 jobs:         
     sast-docker-check:
+        needs: [terraform]
         runs-on: ubuntu-latest
         name: sast_dockercheck
         steps:
