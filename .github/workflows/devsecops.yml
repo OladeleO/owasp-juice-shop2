@@ -28,8 +28,7 @@ env:
   IMAGE: owasp-juice-shop-img
 
 
-jobs:        
-   
+jobs:         
   sast-docker-check:
         runs-on: ubuntu-latest
         name: sast_dockercheck
