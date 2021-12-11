@@ -124,25 +124,36 @@ jobs:
         uses: actions/checkout@master
       - name: Check password
         uses: AlicanAkkus/pinder-action@0.1
-      - name: Check for sensitive data
-        uses : Vannevelj/sensitivity@v1.11
-        with:
-          path: src
+#      - name: Check for sensitive data
+#        uses : Vannevelj/sensitivity@v1.11
+#        with:
+#          path: src
       - name: Detect secrets with Talisman in incoming commits
         uses: carhartl/talisman-secrets-scan-action@v1.0.1
     
     checkov-job:
       runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          python-version: [3.8]
       name: checkov-action
       steps:
         - name: Checkout repo
           uses: actions/checkout@master
-
-        - name: Run Checkov action
-          id: checkov
-          uses: bridgecrewio/checkov-action@master
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v1
           with:
-            directory: '.'
+            python-version: ${{ matrix.python-version }}
+        - name: Test with Checkov
+          run: |
+            pip install checkov
+            checkov -d .
+        #- name: Run Checkov action
+        #  id: checkov
+        #  uses: bridgecrewio/checkov-action@master
+        #  with:
+        #    directory: '.'
+        #    framework: terraform
     
     
     dependency-check:
