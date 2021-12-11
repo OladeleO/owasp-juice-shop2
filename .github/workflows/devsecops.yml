@@ -210,6 +210,8 @@ jobs:
       - name: ZAP Scan
         uses: zaproxy/action-full-scan@v0.3.0
         with:
-          target: kubectl get service/owasp-juice-shop-service -o jsonpath='{.spec.clusterIP}' + ':3000'
+          target: 'https://preview.owasp-juice.shop'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
 
 
