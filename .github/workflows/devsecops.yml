@@ -124,7 +124,26 @@ jobs:
         uses: actions/checkout@master
       - name: Check password
         uses: AlicanAkkus/pinder-action@0.1
-      
+      - name: Check for sensitive data
+        uses : Vannevelj/sensitivity@v1.11
+        with:
+          path: src
+      - name: Detect secrets with Talisman in incoming commits
+        uses: carhartl/talisman-secrets-scan-action@v1.0.1
+    
+    checkov-job:
+      runs-on: ubuntu-latest
+      name: checkov-action
+      steps:
+        - name: Checkout repo
+          uses: actions/checkout@master
+
+        - name: Run Checkov action
+          id: checkov
+          uses: bridgecrewio/checkov-action@master
+          with:
+            directory: '.'
+    
     
     dependency-check:
       runs-on: ubuntu-latest
@@ -138,12 +157,14 @@ jobs:
           with:
             project: 'owasp-juice-shop'
             path: '.'
-            format: 'HTML'    
+            format: 'HTML'
         - name: Upload Test results
           uses: actions/upload-artifact@master
           with:
              name: dependency-check-report
              path: ${{github.workspace}}/reports
+             
+             
 
     setup-build-publish-deploy:
       needs: [terraform]
