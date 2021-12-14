@@ -250,10 +250,9 @@ jobs:
       name: Scan the web application
       steps:
       - name: ZAP Scan
-        uses: zaproxy/action-full-scan@v0.3.0
+        uses: zaproxy/action-baseline@v0.4.0
         with:
           target: 'https://preview.owasp-juice.shop'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'
+          # cmd_options: '-a'
 
 
